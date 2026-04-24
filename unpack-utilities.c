@@ -187,8 +187,53 @@ size_t decompress_data(uint8_t* input_data, size_t input_len,
   // TODO
   // Decompress input_data and write result to output_data
   // Return the length of the decompressed data
+  size_t in = 0;
+  size_t out = 0;
 
-  return 0;
+  while (in < input_len)
+  {
+    uint8_t tempd = input_data[in];
+    if (tempd != ESCAPE_BYTE || in == input_len - 1)
+    {
+      if (out < output_len)
+      {
+        output_data[out] = tempd;
+      }
+      out++;
+      in++;
+      continue;
+    }
+  
+
+    uint8_t code = input_data[in + 1];
+
+    if (code == 0x00)
+    {
+      if (out < output_len)
+      {
+        output_data[out] = ESCAPE_BYTE;
+      }
+      out+=2;
+
+    }
+    else
+    {
+      uint8_t rl = code >> 4;
+      uint8_t dic_ind = code & 0x0F;
+      uint8_t value = dictionary_data[dic_ind];
+
+      for (uint8_t i = 0; i < rl; i++)
+      {
+        if (out < output_len)
+        {
+          output_data[out] = value;
+        }
+        out++;
+      }
+    }
+  }
+
+  return out;
 }
 
 void join_float_array(uint8_t* input_signfrac, size_t input_len_bytes_signfrac,
