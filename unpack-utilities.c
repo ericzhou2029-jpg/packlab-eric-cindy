@@ -158,15 +158,26 @@ uint16_t lfsr_step(uint16_t oldstate) {
 void decrypt_data(uint8_t* input_data, size_t input_len,
                   uint8_t* output_data, size_t output_len,
                   uint16_t encryption_key) {
+  // null check
+  if (input_data == NULL || output_data == NULL) {
+    return;
+  }
 
-  // TODO
-  // Decrypt input_data and write result to output_data
-  // Uses lfsr_step() to calculate psuedorandom numbers, initialized with encryption_key
-  // Step the LFSR once before encrypting data
-  // Apply psuedorandom number with an XOR in little-endian order
-  // Beware: input_data may be an odd number of bytes
-  
+  uint16_t state = encryption_key;
+  size_t bytes_to_write = input_len;
+  if (bytes_to_write > output_len) {
+    bytes_to_write = output_len;
+  }
 
+  for (size_t i = 0; i < bytes_to_write; i += 2) {
+    state = lfsr_step(state);
+
+    // XOR the first byte with the low byte, then the second with the high byte.
+    output_data[i] = input_data[i] ^ (uint8_t)(state & 0xFF);
+    if (i + 1 < bytes_to_write) {
+      output_data[i + 1] = input_data[i + 1] ^ (uint8_t)((state >> 8) & 0xFF);
+    }
+  }
 }
 
 size_t decompress_data(uint8_t* input_data, size_t input_len,
