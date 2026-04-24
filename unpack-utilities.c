@@ -26,12 +26,105 @@ void* malloc_and_check(size_t size) {
 }
 
 void parse_header(uint8_t* input_data, size_t input_len, packlab_config_t* config) {
+  // function takes in raw header data
+  // outputs the config struct
 
-  // TODO
-  // Validate the header and set configurations based on it
-  // Look at unpack-utilities.h to see what the fields of config are
-  // Set the is_valid field of config to false if the header is invalid
-  // or input_len (length of the input_data) is shorter than expected
+  // init config variables
+  size_t offset = 0;
+  uint8_t flags = 0;
+  uint64_t orig_data_size = 0;
+  uint64_t data_size = 0;
+
+  // check null
+  if (config == NULL) {
+    return;
+  }
+
+  config->is_valid = false;
+
+  // basic checks
+  if (input_data == NULL) {
+    return;
+  }
+
+  if (input_len < 4) {
+    return;
+  }
+
+  // check if the magic and version are correct (first 2 magic, second version)
+  if (input_data[0] != 0x02 || input_data[1] != 0x13 || input_data[2] != 0x03) {
+    return;
+  }
+
+  // obtain flags
+  flags = input_data[3];
+
+  // check if bits 0 and 1 are unused (little endian)
+  if ((flags & 0x03) != 0) {
+    return;
+  }
+
+  // obtain all flags
+  config->is_compressed   = (flags & 0x80) != 0;
+  config->is_encrypted    = (flags & 0x40) != 0;
+  config->is_checksummed  = (flags & 0x20) != 0;
+  config->should_continue = (flags & 0x10) != 0;
+  config->should_float    = (flags & 0x08) != 0;
+  config->should_float3   = (flags & 0x04) != 0;
+
+  // set offset (think of it like a cursor in memory)
+  offset = 4;
+
+  // if offset already wrote over
+  if (input_len < offset + 8) {
+    return;
+  }
+
+  // rebuild original stream length (little endian)
+  for (size_t i = 0; i < 8; i++) {
+    orig_data_size |= ((uint64_t)input_data[offset + i]) << (8 * i);
+  }
+  config->orig_data_size = orig_data_size;
+  offset += 8;
+
+  if (input_len < offset + 8) {
+    return;
+  }
+
+  // rebuild compressedsteram length (little endian)
+  for (size_t i = 0; i < 8; i++) {
+    data_size |= ((uint64_t)input_data[offset + i]) << (8 * i);
+  }
+  config->data_size = data_size;
+  offset += 8;
+
+  if (config->is_compressed) {
+    // check if there are 16 more bytes
+    if (input_len < offset + DICTIONARY_LENGTH) {
+      return;
+    }
+    // copy byes into config strucut
+    memcpy(config->dictionary_data, &input_data[offset], DICTIONARY_LENGTH);
+    offset += DICTIONARY_LENGTH;
+  }
+
+  if (config->is_checksummed) {
+    // check if enough for check sum
+    if (input_len < offset + 2) {
+      return;
+    }
+    // check sum is big endian
+    config->checksum_value = (((uint16_t)input_data[offset]) << 8)
+                             | ((uint16_t)input_data[offset + 1]);
+    offset += 2;
+  }
+
+  if (offset > MAX_HEADER_SIZE) {
+    return;
+  }
+
+  config->header_len = offset;
+  config->is_valid = true;
 
 }
 
@@ -105,4 +198,3 @@ void join_float_array_three_stream(uint8_t* input_frac,
   // Output bytes are in little-endian order
 
 }
-
