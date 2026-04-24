@@ -65,43 +65,75 @@ int test_lfsr_step(void) {
   return 0;
 }
 
-// Here's an example testcase
-// It's written for the `calculate_checksum()` function, but the same ideas
-//  would work for any function you want to test
-// Feel free to copy it and adapt it to create your own tests
-int example_test(void) {
-  // Create input data to test with
-  // If you wanted to test a header, these would be bytes of the header with
-  //    meaningful bytes in appropriate places
-  // If you want to test one of the other functions, they can be any bytes
-  uint8_t input_data[] = {0x01, 0x03, 0x04, };
+int test_decrypt_even_length(void) {
+  uint8_t input_data[] = {0x60, 0x5A, 0xFF, 0xB7};
+  uint8_t input_copy[] = {0x60, 0x5A, 0xFF, 0xB7};
+  uint8_t output_data[sizeof(input_data)] = {0};
+  uint8_t expected_output[] = {0xFB, 0x53, 0x32, 0x33};
 
-  // Create an "expected" result to compare against
-  // If you're testing header parsing, you will likely need one of these for
-  //    each config field. If you're testing decryption or decompression, this
-  //    should be an array of expected output_data bytes
-  uint16_t expected_checksum_value = 0x0008;
+  decrypt_data(input_data, sizeof(input_data), output_data, sizeof(output_data), 0x1337);
 
-  // Actually run your code
-  // Note that `sizeof(input_data)` actually returns the number of bytes for the
-  //    array because it's a local variable (`sizeof()` generally doesn't return
-  //    buffer lengths in C for arrays that are passed in as arguments)
-  uint16_t calculated_checksum_value = calculate_checksum(input_data, sizeof(input_data));
-
-  // Compare the results
-  // This might need to be multiple comparisons or even a loop that compares many bytes
-  // `memcmp()` in the C standard libary might be a useful function here!
-  // Note, you don't _need_ the CHECK() functions like we used in CS211, you
-  //    can just return 1 then print that there was an error
-  if (calculated_checksum_value != expected_checksum_value) {
-    // Test failed! Return 1 to signify failure
+  if (memcmp(output_data, expected_output, sizeof(expected_output)) != 0) {
+    printf("ERROR: even-length decrypt output mismatch\n");
     return 1;
   }
 
-  // Test succeeded! Return 0 to signify success
+  if (memcmp(input_data, input_copy, sizeof(input_data)) != 0) {
+    printf("ERROR: decrypt_data modified the input buffer\n");
+    return 1;
+  }
+
   return 0;
 }
 
+int test_decrypt_odd_length(void) {
+  uint8_t input_data[] = {0x60, 0x5A, 0xFF};
+  uint8_t output_data[sizeof(input_data)] = {0};
+  uint8_t expected_output[] = {0xFB, 0x53, 0x32};
+
+  decrypt_data(input_data, sizeof(input_data), output_data, sizeof(output_data), 0x1337);
+
+  if (memcmp(output_data, expected_output, sizeof(expected_output)) != 0) {
+    printf("ERROR: odd-length decrypt output mismatch\n");
+    return 1;
+  }
+
+  return 0;
+}
+
+int test_decrypt_truncated_output(void) {
+  uint8_t input_data[] = {0x60, 0x5A, 0xFF, 0xB7};
+  uint8_t output_data[] = {0xAA, 0xAA, 0xAA, 0xAA};
+  uint8_t expected_prefix[] = {0xFB, 0x53, 0x32};
+
+  decrypt_data(input_data, sizeof(input_data), output_data, 3, 0x1337);
+
+  if (memcmp(output_data, expected_prefix, sizeof(expected_prefix)) != 0) {
+    printf("ERROR: truncated decrypt output mismatch\n");
+    return 1;
+  }
+
+  if (output_data[3] != 0xAA) {
+    printf("ERROR: decrypt_data wrote past output_len\n");
+    return 1;
+  }
+
+  return 0;
+}
+
+int test_decrypt_zero_length(void) {
+  uint8_t input_data[] = {0x60, 0x5A};
+  uint8_t output_data[] = {0xAA, 0xAA};
+
+  decrypt_data(input_data, 0, output_data, sizeof(output_data), 0x1337);
+
+  if (output_data[0] != 0xAA || output_data[1] != 0xAA) {
+    printf("ERROR: zero-length decrypt should not modify output\n");
+    return 1;
+  }
+
+  return 0;
+}
 
 
 int main(void) {
@@ -113,20 +145,30 @@ int main(void) {
     return 1;
   }
 
-  // TODO - add tests here for other functionality
-  // You can craft arbitrary array data as inputs to the functions
-  // Parsing headers, checksumming, decryption, and decompressing are all testable
-
-  // Here's an example test
-  // Note that it's going to fail until you implement the `calculate_checksum()` function
-  result = example_test();
+  result = test_decrypt_even_length();
   if (result != 0) {
-    // Make sure to print the name of which test failed, so you can go find it and figure out why
-    printf("ERROR: example_test_setup failed\n");
+    printf("ERROR: test_decrypt_even_length failed\n");
+    return 1;
+  }
+
+  result = test_decrypt_odd_length();
+  if (result != 0) {
+    printf("ERROR: test_decrypt_odd_length failed\n");
+    return 1;
+  }
+
+  result = test_decrypt_truncated_output();
+  if (result != 0) {
+    printf("ERROR: test_decrypt_truncated_output failed\n");
+    return 1;
+  }
+
+  result = test_decrypt_zero_length();
+  if (result != 0) {
+    printf("ERROR: test_decrypt_zero_length failed\n");
     return 1;
   }
 
   printf("All tests passed successfully!\n");
   return 0;
 }
-
