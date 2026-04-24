@@ -144,12 +144,15 @@ uint16_t calculate_checksum(uint8_t* input_data, size_t input_len) {
 }
 
 uint16_t lfsr_step(uint16_t oldstate) {
+  uint16_t bit0 = (oldstate >> 0) & 1;
+  uint16_t bit6 = (oldstate >> 6) & 1;
+  uint16_t bit9 = (oldstate >> 9) & 1;
+  uint16_t bit13 = (oldstate >> 13) & 1;
+  uint16_t new_bit = bit0 ^ bit6 ^ bit9 ^ bit13;
+  uint16_t next_state = oldstate >> 1;
 
-  // TODO
-  // Calculate the new LFSR state given previous state
-  // Return the new LFSR state
-
-  return 0;
+  next_state = next_state | (new_bit << 15);
+  return next_state;
 }
 
 void decrypt_data(uint8_t* input_data, size_t input_len,
