@@ -183,54 +183,36 @@ void decrypt_data(uint8_t* input_data, size_t input_len,
 size_t decompress_data(uint8_t* input_data, size_t input_len,
                        uint8_t* output_data, size_t output_len,
                        uint8_t* dictionary_data) {
+  if (input_data == NULL || output_data == NULL || dictionary_data == NULL) {
+    return 0;
+  }
 
-  // TODO
-  // Decompress input_data and write result to output_data
-  // Return the length of the decompressed data
   size_t in = 0;
   size_t out = 0;
 
-  while (in < input_len)
-  {
-    uint8_t tempd = input_data[in];
-    if (tempd != ESCAPE_BYTE || in == input_len - 1)
-    {
-      if (out < output_len)
-      {
-        output_data[out] = tempd;
-      }
-      out++;
+  while (in < input_len && out < output_len) {
+    uint8_t current = input_data[in];
+    if (current != ESCAPE_BYTE || in + 1 >= input_len) {
+      output_data[out++] = current;
       in++;
       continue;
     }
-  
 
     uint8_t code = input_data[in + 1];
-
-    if (code == 0x00)
-    {
-      if (out < output_len)
-      {
-        output_data[out] = ESCAPE_BYTE;
-      }
-      out+=2;
-
+    if (code == 0x00) {
+      output_data[out++] = ESCAPE_BYTE;
+      in += 2;
+      continue;
     }
-    else
-    {
-      uint8_t rl = code >> 4;
-      uint8_t dic_ind = code & 0x0F;
-      uint8_t value = dictionary_data[dic_ind];
 
-      for (uint8_t i = 0; i < rl; i++)
-      {
-        if (out < output_len)
-        {
-          output_data[out] = value;
-        }
-        out++;
-      }
+    uint8_t run_length = code >> 4;
+    uint8_t dictionary_index = code & 0x0F;
+    uint8_t value = dictionary_data[dictionary_index];
+
+    for (uint8_t i = 0; i < run_length && out < output_len; i++) {
+      output_data[out++] = value;
     }
+    in += 2;
   }
 
   return out;
