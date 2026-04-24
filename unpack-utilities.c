@@ -134,7 +134,13 @@ uint16_t calculate_checksum(uint8_t* input_data, size_t input_len) {
   // Calculate a checksum over input_data
   // Return the checksum value
 
-  return 0;
+  uint16_t checksum = 0;
+
+  for (size_t i = 0; i < input_len; i++) {
+    checksum += input_data[i];
+  }
+
+  return checksum;
 }
 
 uint16_t lfsr_step(uint16_t oldstate) {
