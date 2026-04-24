@@ -254,6 +254,22 @@ void join_float_array(uint8_t* input_signfrac, size_t input_len_bytes_signfrac,
 /* End of mandatory implementation. */
 
 /* Extra credit */
+
+static uint32_t read_bits(uint8_t* src, size_t bit_offset, size_t num_bits) {
+  uint32_t value = 0;
+
+  for (size_t i = 0; i < num_bits; i++) {
+    size_t src_bit_index = bit_offset + i;
+    size_t byte_index = src_bit_index / 8;
+    size_t bit_index = src_bit_index % 8;
+
+    uint32_t bit = (src[byte_index] >> bit_index) & 0x01;
+    value |= (bit << i);
+  }
+
+  return value;
+}
+
 void join_float_array_three_stream(uint8_t* input_frac,
                                    size_t   input_len_bytes_frac,
                                    uint8_t* input_exp,
@@ -267,5 +283,27 @@ void join_float_array_three_stream(uint8_t* input_frac,
   // Combine three streams of bytes, one with frac data, one with exp data,
   // and one with sign data, into one output stream of floating point data
   // Output bytes are in little-endian order
+  (void)input_len_bytes_frac;
+  (void)input_len_bytes_sign;
+
+  size_t num_floats = input_len_bytes_exp;
+
+  for (size_t i = 0; i < num_floats; i++) {
+    uint32_t frac = read_bits(input_frac, i * 23, 23);
+    uint32_t exp = input_exp[i];
+    uint32_t sign = read_bits(input_sign, i, 1);
+
+    uint32_t float_bits = frac | (exp << 23) | (sign << 31);
+
+    size_t out_index = 4 * i;
+    if (out_index + 3 < output_len_bytes) {
+      output_data[out_index] = float_bits & 0xFF;
+      output_data[out_index + 1] = (float_bits >> 8) & 0xFF;
+      output_data[out_index + 2] = (float_bits >> 16) & 0xFF;
+      output_data[out_index + 3] = (float_bits >> 24) & 0xFF;
+    }
+  }
+  
+  
 
 }
