@@ -135,6 +135,35 @@ int test_decrypt_zero_length(void) {
   return 0;
 }
 
+int test_decompress_escape_and_run(void) {
+  uint8_t dictionary_data[DICTIONARY_LENGTH] = {0};
+  dictionary_data[1] = 0x41;
+
+  uint8_t input_data[] = {
+    0x42,
+    ESCAPE_BYTE, 0x31,
+    ESCAPE_BYTE, 0x00,
+    0x43,
+  };
+  uint8_t output_data[6] = {0};
+  uint8_t expected_output[] = {0x42, 0x41, 0x41, 0x41, ESCAPE_BYTE, 0x43};
+
+  size_t output_len = decompress_data(input_data, sizeof(input_data),
+      output_data, sizeof(output_data), dictionary_data);
+
+  if (output_len != sizeof(expected_output)) {
+    printf("ERROR: decompress output length mismatch\n");
+    return 1;
+  }
+
+  if (memcmp(output_data, expected_output, sizeof(expected_output)) != 0) {
+    printf("ERROR: decompress output bytes mismatch\n");
+    return 1;
+  }
+
+  return 0;
+}
+
 
 int main(void) {
 
@@ -166,6 +195,12 @@ int main(void) {
   result = test_decrypt_zero_length();
   if (result != 0) {
     printf("ERROR: test_decrypt_zero_length failed\n");
+    return 1;
+  }
+
+  result = test_decompress_escape_and_run();
+  if (result != 0) {
+    printf("ERROR: test_decompress_escape_and_run failed\n");
     return 1;
   }
 
