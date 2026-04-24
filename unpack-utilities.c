@@ -230,6 +230,25 @@ void join_float_array(uint8_t* input_signfrac, size_t input_len_bytes_signfrac,
   // Combine two streams of bytes, one with signfrac data and one with exp data,
   // into one output stream of floating point data
   // Output bytes are in little-endian order
+  size_t num_floats = input_len_bytes_exp;
+
+  for (size_t i = 0; i < num_floats; i++) {
+    size_t sf_index = 3 * i;
+    size_t out_index = 4 * i;
+
+    uint8_t sf0 = input_signfrac[sf_index];
+    uint8_t sf1 = input_signfrac[sf_index + 1];
+    uint8_t sf2 = input_signfrac[sf_index + 2];
+    uint8_t exp = input_exp[i];
+
+    if (out_index + 3 < output_len_bytes) {
+      output_data[out_index] = sf0;
+      output_data[out_index + 1] = sf1;
+      output_data[out_index + 2] = (sf2 & 0x7F) | ((exp & 0x01) << 7);
+      output_data[out_index + 3] = (sf2 & 0x80) | (exp >> 1);
+    }
+  }
+
 
 }
 /* End of mandatory implementation. */
